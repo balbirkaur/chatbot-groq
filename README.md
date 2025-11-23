@@ -1,4 +1,4 @@
-# chatbot-groq
+# PDF Q&A Chatbot using Groq + LangChain
 LangChain Groq RAG - PDF Question Answering System
 A Retrieval-Augmented Generation (RAG) system that enables intelligent Q&A over PDF documents using LangChain, Groq's fast inference API, and Chroma vector database.
 
@@ -18,7 +18,8 @@ A Retrieval-Augmented Generation (RAG) system that enables intelligent Q&A over 
    ```
 2. **Set up environment:**
    echo "GROQ_API_KEY=your_key_here" > .env
-3. **FULL INSTALLATION COMMAND (COPY–PASTE & RUN)**
+   
+4. **Full Installation Command (COPY–PASTE & RUN)**
   ```bash
 pip install langchain langchain-core langchain-community chromadb sentence-transformers pypdf python-dotenv groq fastapi uvicorn[standard] --upgrade
    ```
