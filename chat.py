@@ -1,59 +1,70 @@
 import os
 from dotenv import load_dotenv
-from groq import Groq
 
+from langchain_core.runnables import RunnableWithMessageHistory
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_community.vectorstores import Chroma
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
-
-from langchain_chroma import Chroma
+from langchain_groq import ChatGroq
+from langchain.prompts import ChatPromptTemplate
 
 load_dotenv()
 
-CHROMA_DIR = "db"
-
-# Groq client
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
 # Embeddings
-emb = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-# Load Chroma
-db = Chroma(
-    persist_directory=CHROMA_DIR,
-    embedding_function=emb
+# Vector DB
+vectordb = Chroma(
+    persist_directory="chroma",
+    embedding_function=embeddings
+)
+retriever = vectordb.as_retriever(search_kwargs={"k": 3})
+
+# LLM - Groq
+llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
+    temperature=0.2,
+    api_key=os.getenv("GROQ_API_KEY")
 )
 
-retriever = db.as_retriever(search_kwargs={"k": 4})
+# Prompt Template (Updated for LangChain 0.3.x)
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are an AI assistant. Use the context and chat history to answer."),
+    ("system", "Context:\n{context}"),
+    ("system", "Chat History:\n{chat_history}"),
+    ("human", "{question}")
+])
 
+# Context builder
+def build_context(inputs):
+    docs = retriever.invoke(inputs["question"])
+    return {"context": "\n\n".join(d.page_content for d in docs)}
 
-def rag(question):
-    docs = retriever.invoke(question)
-    context = "\n\n".join(d.page_content for d in docs)
+# Main RAG Chain
+rag_chain = (
+    {
+        "context": build_context,
+        "question": lambda x: x["question"],
+        "chat_history": lambda x: x.get("chat_history", []),
+    }
+    | prompt
+    | llm
+)
 
-    prompt = f"""
-Answer the question ONLY using the PDF context below.
-If the answer is not in the PDF, say "Not found in PDF".
+# Chat Memory
+store = {}
 
-CONTEXT:
-{context}
+def get_history(session_id):
+    if session_id not in store:
+        store[session_id] = ChatMessageHistory()
+    return store[session_id]
 
-QUESTION:
-{question}
-"""
-
-    response = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
-        messages=[{"role": "user", "content": prompt}]
-    )
-
-
-
-    return response.choices[0].message.content
-
-
-print("🤖 Chatbot Ready! Ask anything about the PDF.\n")
-
-while True:
-    q = input("You: ")
-    if q.lower() in ["exit", "quit"]:
-        break
-    print("\nBot:", rag(q), "\n")
+# Chain with Memory
+rag_with_memory = RunnableWithMessageHistory(
+    rag_chain,
+    get_history,
+    input_messages_key="question",
+    history_messages_key="chat_history"
+)

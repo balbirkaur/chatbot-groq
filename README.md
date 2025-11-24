@@ -19,20 +19,27 @@ A Retrieval-Augmented Generation (RAG) system that enables intelligent Q&A over 
 ## Installation
 
 1. **Clone the repository:**
+
    ```bash
    git clone <your-repo-url>
    cd langchain_groq
    ```
 
 2. **Create and activate a virtual environment:**
+
    ```bash
    python -m venv .venv
    .venv\Scripts\activate
    ```
 
 3. **Install dependencies:**
+
    ```bash
    pip install -r requirements.txt
+   ```
+
+   ```bash
+   pip freeze | findstr /R /C:"langchain" /C:"chromadb" /C:"groq" /C:"python-dotenv" /C:"sentence" /C:"pypdf" > requirements.txt
    ```
 
 4. **Set up environment variables:**
@@ -52,6 +59,7 @@ python ingest.py
 ```
 
 This will:
+
 - Load all PDFs from `pdfs/`
 - Split documents into semantic chunks
 - Generate embeddings
@@ -60,11 +68,13 @@ This will:
 ### 2. Ask Questions
 
 **Interactive mode:**
+
 ```bash
 python main.py
 ```
 
 **Programmatic usage:**
+
 ```python
 from chat import rag
 
@@ -97,6 +107,7 @@ GROQ_API_KEY=your_api_key_here
 ## Usage Examples
 
 ### Example 1: Basic Question
+
 ```python
 from chat import rag
 
@@ -105,6 +116,7 @@ print(result)
 ```
 
 ### Example 2: Specific Query
+
 ```python
 from chat import rag
 
@@ -115,6 +127,7 @@ print(result)
 ## How It Works
 
 1. **Ingestion Phase** (`ingest.py`):
+
    - Loads PDFs using PyPDFLoader
    - Splits content into 1000-char chunks with 200-char overlap
    - Generates embeddings using sentence-transformers
@@ -141,16 +154,20 @@ print(result)
 ## Troubleshooting
 
 ### "Not found in PDF"
+
 The answer isn't in your PDF documents. Try:
+
 - Rephrasing the question
 - Ensuring PDFs are properly ingested
 - Checking retriever with `k=4` parameter
 
 ### Slow ingestion
+
 - Large PDFs may take time. Be patient.
 - Chunk size (1000) can be adjusted in `ingest.py`
 
 ### API errors
+
 - Verify `GROQ_API_KEY` is set correctly in `.env`
 - Check internet connection
 - Ensure API key has sufficient credits

@@ -1,40 +1,35 @@
 import os
-from dotenv import load_dotenv
-
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
-
-load_dotenv()
+from langchain_community.vectorstores import Chroma
 
 PDF_DIR = "pdfs"
-CHROMA_DIR = "db"
 
-print("📄 Loading PDF...")
-docs = []
+def load_pdfs():
+    documents = []
+    for file in os.listdir(PDF_DIR):
+        if file.endswith(".pdf"):
+            loader = PyPDFLoader(os.path.join(PDF_DIR, file))
+            documents.extend(loader.load())
+    return documents
 
-for file in os.listdir(PDF_DIR):
-    if file.endswith(".pdf"):
-        loader = PyPDFLoader(os.path.join(PDF_DIR, file))
-        docs.extend(loader.load())
+def ingest():
+    print("📄 Loading PDFs...")
+    docs = load_pdfs()
 
-print(f"Loaded {len(docs)} pages.")
+    print("🔪 Chunking text...")
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    chunks = splitter.split_documents(docs)
 
-splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-chunks = splitter.split_documents(docs)
+    print("🧠 Generating embeddings...")
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-print(f"Split into {len(chunks)} chunks.")
+    print("💾 Storing in Chroma...")
+    vectordb = Chroma.from_documents(chunks, embeddings, persist_directory="chroma")
+    vectordb.persist()
 
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
-)
+    print("✅ Ingestion complete!")
 
-db = Chroma(
-    persist_directory=CHROMA_DIR,
-    embedding_function=embeddings
-)
-
-db.add_documents(chunks)
-
-print("✅ Ingestion complete! Chroma DB saved.")
+if __name__ == "__main__":
+    ingest()
