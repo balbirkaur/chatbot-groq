@@ -1,62 +1,89 @@
 # LangChain Groq RAG - PDF Question Answering System
 
-A Retrieval-Augmented Generation (RAG) system that enables intelligent Q&A over PDF documents using LangChain, Groq's fast inference API, and Chroma vector database.
+A Retrieval-Augmented Generation (RAG) chatbot that answers questions using the content of your PDF documents. Combines LangChain, Groq's fast LLM API, and Chroma vector database for efficient, context-aware responses.
 
 ## Features
 
-- **PDF Ingestion**: Automatically load and process PDF files from the `pdfs/` directory
-- **Semantic Chunking**: Split documents intelligently using RecursiveCharacterTextSplitter
-- **Vector Embeddings**: Generate embeddings using HuggingFace's sentence-transformers
-- **Persistent Storage**: Store embeddings in Chroma vector database for fast retrieval
-- **Fast Inference**: Leverage Groq's API with Llama 3.1 8B for rapid response generation
-- **Context-Aware Answers**: Answers are grounded exclusively in your PDF content
-
-## Prerequisites
-
-- Python 3.9+
-- Groq API key (get one at [console.groq.com](https://console.groq.com))
+- **PDF Ingestion:** Load and process PDFs from the `pdfs/` folder
+- **Semantic Chunking:** Split documents for better retrieval
+- **Embeddings:** Use HuggingFace sentence-transformers
+- **Vector Database:** Store and search chunks in Chroma
+- **LLM Integration:** Query Groq's Llama 3.1 8B model
+- **Environment Management:** Uses `.env` for secrets
 
 ## Installation
 
 1. **Clone the repository:**
-
-   ```bash
-   git clone <your-repo-url>
-   cd langchain_groq
+   ```powershell
+   git clone git@github.com:balbirkaur/chatbot-groq.git
+   cd chatbot-groq
    ```
-
 2. **Create and activate a virtual environment:**
-
-   ```bash
+   ```powershell
    python -m venv .venv
    .venv\Scripts\activate
    ```
-
 3. **Install dependencies:**
-
-   ```bash
+   ```powershell
    pip install -r requirements.txt
    ```
-
-   ```bash
-   pip freeze | findstr /R /C:"langchain" /C:"chromadb" /C:"groq" /C:"python-dotenv" /C:"sentence" /C:"pypdf" > requirements.txt
-   ```
-
 4. **Set up environment variables:**
-   ```bash
-   cp .env.example .env
-   # Edit .env and add your GROQ_API_KEY
+   - Copy `.env.example` to `.env`
+   - Add your Groq API key:
+     ```env
+     GROQ_API_KEY=your_groq_api_key_here
+     ```
+
+## Usage
+
+1. **Ingest PDFs:**
+   - Place your PDF files in the `pdfs/` directory
+   - Run:
+     ```powershell
+     python ingest.py
+     ```
+2. **Ask questions (CLI):**
+
+   ```powershell
+   python main.py
    ```
 
-## Quick Start
+   - Type your question and get answers based on your PDFs
 
-### 1. Ingest PDF Documents
+3. **Programmatic usage:**
+   ```python
+   from chat import rag
+   answer = rag("What is the main topic?")
+   print(answer)
+   ```
 
-Place your PDF files in the `pdfs/` directory, then run:
+## Project Structure
 
-```bash
-python ingest.py
 ```
+chatbot-groq/
+├── chat.py         # RAG chat logic
+├── ingest.py       # PDF ingestion and embedding
+├── main.py         # Interactive CLI
+├── requirements.txt
+├── .env.example
+├── .gitignore
+├── pdfs/           # Place PDFs here
+├── db/             # Chroma DB files
+```
+
+## Troubleshooting
+
+- If you see "Not found in PDF", the answer isn't in your documents.
+- If you get API errors, check your `.env` and Groq API key.
+- For merge/push issues, ensure your local branch is up to date with remote.
+
+## License
+
+MIT
+
+## Contributing
+
+Pull requests welcome!
 
 This will:
 
