@@ -1,70 +1,53 @@
 import os
+import streamlit as st
 from dotenv import load_dotenv
 
-from langchain_core.runnables import RunnableWithMessageHistory
-from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_community.vectorstores import Chroma
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
-from langchain.prompts import ChatPromptTemplate
+from langchain.schema.runnable import RunnablePassthrough
 
 load_dotenv()
 
-# Embeddings
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+CHROMA_DIR = "chroma"
 
-# Vector DB
-vectordb = Chroma(
-    persist_directory="chroma",
-    embedding_function=embeddings
+# API key: Streamlit secrets (Cloud) or .env (Local)
+groq_api_key = (
+    st.secrets.get("GROQ_API_KEY")
+    if hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets
+    else os.getenv("GROQ_API_KEY")
 )
-retriever = vectordb.as_retriever(search_kwargs={"k": 3})
 
-# LLM - Groq
+if not groq_api_key:
+    raise ValueError("❌ Groq API key missing. Add to .env or Streamlit Secrets.")
+
+# Groq model
 llm = ChatGroq(
     model="llama-3.3-70b-versatile",
-    temperature=0.2,
-    api_key=os.getenv("GROQ_API_KEY")
+    groq_api_key=groq_api_key,
 )
 
-# Prompt Template (Updated for LangChain 0.3.x)
+embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
+vectordb = Chroma(
+    persist_directory=CHROMA_DIR,
+    embedding_function=embeddings
+)
+
+retriever = vectordb.as_retriever(search_kwargs={"k": 3})
+
+# Prompt with context (RAG)
 prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are an AI assistant. Use the context and chat history to answer."),
-    ("system", "Context:\n{context}"),
-    ("system", "Chat History:\n{chat_history}"),
+    ("system",
+     "You are a helpful assistant. "
+     "Use retrieved PDF context if relevant. Include simple citations."),
     ("human", "{question}")
 ])
 
-# Context builder
-def build_context(inputs):
-    docs = retriever.invoke(inputs["question"])
-    return {"context": "\n\n".join(d.page_content for d in docs)}
-
-# Main RAG Chain
-rag_chain = (
-    {
-        "context": build_context,
-        "question": lambda x: x["question"],
-        "chat_history": lambda x: x.get("chat_history", []),
-    }
+# Create the pipeline
+rag_with_memory = (
+    {"context": retriever, "question": RunnablePassthrough()}
     | prompt
     | llm
-)
-
-# Chat Memory
-store = {}
-
-def get_history(session_id):
-    if session_id not in store:
-        store[session_id] = ChatMessageHistory()
-    return store[session_id]
-
-# Chain with Memory
-rag_with_memory = RunnableWithMessageHistory(
-    rag_chain,
-    get_history,
-    input_messages_key="question",
-    history_messages_key="chat_history"
 )
